@@ -167,6 +167,53 @@ int main(int argc, char *argv[])
 	// *** INSERT YOUR CODE BELOW ***
 	//    Happy coding!!!
 
+	// check for errors
+	// check for duplicate labels and undefined globals
+	for (unsigned int i = 0; i < argc - 2; ++i){
+		// looping through each symbol table entry
+		for (unsigned int j = 0; j < files[i].symbolTableSize; ++j){
+			unsigned int count1 = 0;
+			unsigned int count2 = 0;
+			if(!strcmp(files[i].symbolTable[j].label, "Stack")){
+				if (files[i].symbolTable[j].location != 'U'){
+					printf("%s", "cant define stack");
+					exit(1);
+				}
+			}
+			for (unsigned int k = 0; k < argc - 2; ++k){
+				for (unsigned int l = 0; l < files[k].symbolTableSize; ++l){
+					// if labels are equal
+					if (!strcmp(files[i].symbolTable[j].label, files[k].symbolTable[l].label)){
+						// if location isn't U for both
+						if (files[i].symbolTable[j].location != 'U' && files[k].symbolTable[l].location != 'U'){
+							count1 += 1;
+						}
+
+						if (files[k].symbolTable[l].location != 'U'){
+							count2 += 1;
+						}
+
+					}
+				}
+			}
+			if (count1 > 1){
+				printf("%s", "no duplicates");
+				exit(1);
+			} 
+			if (count2 < 1){
+				printf("%s", "define labels");
+				exit(1);
+			} 
+		}
+	}
+
+
+	// for (unsigned int i = 0; i < argc - 2; ++i){
+	// 	for (unsigned int j = 0; j < files[i].symbolTableSize; ++j){
+
+	// 	}
+	// }
+
 	unsigned int line = 0;
 
 
@@ -183,7 +230,7 @@ int main(int argc, char *argv[])
 	}
 
 
-	// loop through and edit locals
+	// loop through and edit stuff in relocation table
 	for (unsigned int i = 0; i < argc - 2; ++i){
 		for (unsigned int j = 0; j < files[i].relocationTableSize; ++j){
 			// unsigned int tstart = files[i].textStartingLine;
@@ -256,100 +303,124 @@ int main(int argc, char *argv[])
 				}
 			}
 
-			// if it is sw and local
-			// if (!strcmp(files[i].relocTable[j].inst, "sw")){
-
-			// 	if (!isupper(files[i].relocTable[j].label[0])){
-
-			// 		unsigned int mask = 0b1111111110000000000000000;
-			// 		bool in_text = true;
-
-			// 		unsigned int temp = files[i].text[offset] & mask;
-
-			// 		unsigned int true_off = files[i].text[offset] - (temp);
-
-			// 		if (true_off >= files[i].textSize){
-			// 			in_text = false;
-			// 		}
-
-
-			// 		if (in_text){
-			// 			files[i].text[offset] += files[i].textStartingLine;
-			// 		}
-			// 		// handles if it is in data section
-			// 		else {
-			// 			true_off -= files[i].textSize;
-
-			// 			files[i].text[offset] = temp + true_off + dstart;
-			// 		}			
-			// 	} else if (!strcmp(files[i].relocTable[j].label, "Stack")){
-
-			// 	} else {
-
-			// 		char section = '\0';
-			// 		unsigned int val = 0;
-			// 		unsigned int f = 0;
-
-
-			// 		// loop thru symbol table to find section and val
-			// 		for (unsigned int a = 0; a < argc - 2; ++a){
-			// 			for (unsigned int b = 0; b < files[a].symbolTableSize; ++b){
-
-			// 				if (!strcmp(files[a].symbolTable[b].label, files[i].relocTable[j].label)){
-			// 					if (files[a].symbolTable[b].location != 'U'){
-			// 						section = files[a].symbolTable[b].location;
-			// 						val = files[a].symbolTable[b].offset;
-			// 						f = a;
-			// 					}
-			// 				}
-
-			// 			}
-			// 		}
-
-			// 		// find the true offset
-
-			// 		unsigned int off = 0;
-
-			// 		if (section == 'D'){
-			// 			off = files[f].dataStartingLine + val;
-			// 		} else {
-			// 			off = files[f].textStartingLine + val;
-			// 		}
-
-			// 		// update the machine code
-			// 		files[i].text[offset] += off;
-
-			// 	}
-				
-			// }
-
+		
 			// if it is .fill and local
 			// .fill would be similar 
-			if (!strcmp(files[i].relocTable[j].inst, ".fill") && !isupper(files[i].relocTable[j].inst[0])){
+			else if (!strcmp(files[i].relocTable[j].inst, ".fill")){
+				if (!isupper(files[i].relocTable[j].inst[0])){
 
-				
-				bool in_text = true;
+					
+					bool in_text = true;
 
-				unsigned int ind_orig_in_data = files[i].relocTable[j].offset;
+					unsigned int ind_orig_in_data = files[i].relocTable[j].offset;
 
-				if (files[i].data[ind_orig_in_data] >= files[i].textSize){
-					in_text = false;
-				}
+					if (files[i].data[ind_orig_in_data] >= files[i].textSize){
+						in_text = false;
+					}
 
 
-				if (in_text){				
-					files[i].data[ind_orig_in_data] += files[i].textStartingLine;	
+					if (in_text){				
+						files[i].data[ind_orig_in_data] += files[i].textStartingLine;	
+					} else {
+						files[i].data[ind_orig_in_data] += files[i].dataStartingLine;
+					}		
+					
+				} else if (!strcmp(files[i].relocTable[j].label, "Stack")){
+
 				} else {
-					files[i].data[ind_orig_in_data] += files[i].dataStartingLine;
-				}		
-				
-			}
+
+					char section = '\0';
+					unsigned int val = 0;
+					unsigned int f = 0;
+
+
+					// loop thru symbol table to find section and val
+					for (unsigned int a = 0; a < argc - 2; ++a){
+						for (unsigned int b = 0; b < files[a].symbolTableSize; ++b){
+
+							if (!strcmp(files[a].symbolTable[b].label, files[i].relocTable[j].label)){
+								if (files[a].symbolTable[b].location != 'U'){
+									section = files[a].symbolTable[b].location;
+									val = files[a].symbolTable[b].offset;
+									f = a;
+								}
+							}
+
+						}
+					}
+
+
+					// find true offset
+					unsigned int off = 0;
+
+					if (section == 'D'){
+						off = files[f].dataStartingLine + val;
+					} else {
+						off = files[f].textStartingLine + val;
+					}
+
+					// update the machine code
+					files[i].data[offset] += off;
+
+
+				}
 			
+			}
 		}
 	}
 
 
-	// find data size
+	// merge into complete file
+
+	CombinedFiles complete;
+
+	complete.textSize = 0;
+	complete.dataSize = 0;
+	complete.relocationTableSize = 0;
+	complete.symbolTableSize = 0;
+
+		for (unsigned int i = 0; i < argc - 2; ++i){
+
+			for (unsigned int j = 0; j < files[i].textSize; ++j){
+					complete.text[complete.textSize + j] = files[i].text[j];
+					complete.text[complete.textSize + j] = files[i].text[j];
+				}
+				
+			for (unsigned int j = 0; j < files[i].dataSize; ++j){
+				complete.data[complete.dataSize + j] = files[i].data[j];
+			}
+
+			for (unsigned int j = 0; j < files[i].symbolTableSize; ++j){
+				complete.symbolTable[complete.symbolTableSize + j] = files[i].symbolTable[j];
+			}
+
+
+			// edit the offsets here
+			for (unsigned int j = 0; j < files[i].relocationTableSize; ++j){
+				complete.relocTable[complete.relocationTableSize + j] = files[i].relocTable[j];
+			}
+
+		
+			complete.textSize += files[i].textSize;
+			complete.dataSize += files[i].dataSize;
+			complete.relocationTableSize += files[i].relocationTableSize;
+			complete.symbolTableSize += files[i].symbolTableSize;
+
+
+	}
+
+	// print out into file
+
+	for (int i = 0; i < complete.textSize; ++i){
+		int j = complete.text[i];
+		fprintf(outFilePtr, "%d", j);
+		fprintf(outFilePtr, "\n");
+	}
+	for (int i = 0; i < complete.dataSize; ++i){
+		int j = complete.data[i];
+		fprintf(outFilePtr, "%d", j);
+		fprintf(outFilePtr, "\n");
+	}
 
 return 0;
 } // main
