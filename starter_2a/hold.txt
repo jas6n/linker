@@ -1,0 +1,880 @@
+/**
+ * Project 1
+ * Assembler code fragment for LC-2K
+ */
+
+#include <stdbool.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+
+//Every LC2K file will contain less than 1000 lines of assembly.
+#define MAXLINELENGTH 1000
+
+int readAndParse(FILE *, char *, char *, char *, char *, char *);
+static void checkForBlankLinesInCode(FILE *inFilePtr);
+static inline int isNumber(char *);
+// int get_index(char * label, struct Labels * ls);
+
+
+struct Labels {
+    char name[MAXLINELENGTH];
+    int index;
+};
+
+struct Symbol {
+    char name[MAXLINELENGTH];
+    char section;
+    unsigned int offset;
+};
+
+struct Reloc {
+    char symbol_name[MAXLINELENGTH];
+    char instruction[MAXLINELENGTH];
+    unsigned int offset;
+};
+
+
+int
+main(int argc, char **argv)
+{
+    char *inFileString, *outFileString;
+    FILE *inFilePtr, *outFilePtr;
+    char label[MAXLINELENGTH], opcode[MAXLINELENGTH], arg0[MAXLINELENGTH],
+            arg1[MAXLINELENGTH], arg2[MAXLINELENGTH];
+
+    int PC = 0;
+
+    int text_count = 0;
+    int data_count = 0;
+    int symbol_count = 0;
+    int reloc_count = 0;
+
+    unsigned int text_items[MAXLINELENGTH];
+    int data_items[MAXLINELENGTH];
+    struct Symbol symbol_items[MAXLINELENGTH];
+    struct Reloc reloc_items[MAXLINELENGTH];
+    // printf("%d", argc);
+
+    if (argc != 3) {
+        printf("error: usage: %s <assembly-code-file> <machine-code-file>\n",
+            argv[0]);
+        exit(1);
+    }
+
+    inFileString = argv[1];
+    outFileString = argv[2];
+
+    inFilePtr = fopen(inFileString, "r");
+    if (inFilePtr == NULL) {
+        printf("error in opening %s\n", inFileString);
+        exit(1);
+    }
+
+    // Check for blank lines in the middle of the code.
+    checkForBlankLinesInCode(inFilePtr);
+
+    outFilePtr = fopen(outFileString, "w");
+    if (outFilePtr == NULL) {
+        printf("error in opening %s\n", outFileString);
+        exit(1);
+    }
+
+    /* here is an example for how to use readAndParse to read a line from
+        inFilePtr */
+    if (! readAndParse(inFilePtr, label, opcode, arg0, arg1, arg2) ) {
+        /* reached end of file */
+    }
+
+
+    /* this is how to rewind the file ptr so that you start reading from the
+        beginning of the file */
+    rewind(inFilePtr);
+
+    struct Labels ls[MAXLINELENGTH];
+    int num_labels = 0;
+    int total_lines = 0; // idk which one is which for num_labels
+
+
+    // first pass - creates an array with a Labels struct containing the label name and its index
+    while(readAndParse(inFilePtr, label, opcode, arg0, arg1, arg2)){
+        if (strcmp(label, "")) {
+            ls[num_labels].index = total_lines;
+            strcpy(ls[num_labels].name, label);
+            num_labels += 1;
+        }
+        total_lines += 1;
+    }
+
+    // check for duplicate labels
+    for (int i = 0; i < num_labels; ++i){
+        int count = 0;
+        for (int j = 0; j < num_labels; ++j){
+            if(!strcmp(ls[i].name, ls[j].name)){
+                count += 1;
+            }   
+        }
+        if (count > 1){
+            printf("error");
+            exit(1);
+        }
+    }
+
+    // add to symbol table if uppercase
+
+    for (int i = 0; i < num_labels; ++i){
+        if (isupper((ls[i].name)[0])){
+            struct Symbol s;
+            strcpy(s.name, ls[i].name);
+            symbol_items[symbol_count] = s;
+            symbol_count += 1;
+
+        }
+    }
+
+    rewind(inFilePtr);
+
+
+    // write to file
+    // int zzz = 0;
+   
+    // 
+
+
+    while(readAndParse(inFilePtr, label, opcode, arg0, arg1, arg2)){
+        unsigned int assembled = 0;
+
+        if (!strcmp(opcode, ".fill")){
+            // if(strcmp(label, "")){
+            //     struct Symbol s;
+            //     strcpy(s.name, label);
+            //     s.section = 'D';
+            //     s.offset = data_count;
+            // }
+            if (isNumber(arg0)){
+                data_items[data_count] = atoi(arg0);
+                data_count += 1;
+            } else {
+                // if it isn't uppercase, check if it is in the file
+                    int k = 0;
+                    // checks if label is defined in file
+
+                    int count = 0;
+                    for (int j = 0; j < num_labels; ++j){
+                        if(!strcmp(arg0, ls[j].name)){
+                            count += 1;
+                        }   
+                    }
+
+                    // if its not uppercase
+                    if (!isupper(arg0[0])){
+                        // exit if not uppercase
+                        if (count != 1){
+                            printf("no label error");
+                            exit(1); // not good
+                        }
+                    }
+                    
+
+                     // if it is in here set k to index
+                    if (count == 1){
+
+                        int z = 0;
+                        while (strcmp(arg0, ls[z].name)){
+                            z += 1;
+                        }
+
+                        k = ls[z].index;
+                    }
+
+
+            
+
+
+                    // if (isupper(arg0[0])){
+                    //     // check to see if it is in symbol table
+                    //     for (int i = 0; i < num_labels; ++i){
+                    //         if (!strcmp(arg2, symbol_items[i].name)){
+                    //             symbol_items[i].offset = data_count;
+                    //             symbol_items[i].section = 'D';
+                    //         }
+                    //     }
+                    // }
+
+                    bool already_in = false;
+
+                    if (isupper(arg0[0])){
+
+                        for (int i = 0; i < symbol_count; ++i){
+                            if (!strcmp(symbol_items[i].name, arg0)){
+                                already_in = true;
+                                break;
+                            }
+                        }
+                    
+
+                    if (!already_in){
+
+                        struct Symbol s;
+                        strcpy(s.name, arg0);
+
+                        // check symbol
+                        s.section = 'U';
+                        s.offset = symbol_count;
+                        s.offset = 0;
+
+                        symbol_items[symbol_count] = s;
+                        symbol_count += 1;
+                    } 
+                    }
+
+                    
+                    // add to relocation table 
+                    struct Reloc r;
+                    strcpy(r.instruction, ".fill");
+                    strcpy(r.symbol_name, arg0);
+                    r.offset = data_count;
+                    reloc_items[reloc_count] = r;
+                    reloc_count += 1;
+
+
+                    data_items[data_count] = k;
+                    data_count += 1;
+
+                    
+                // } else {
+                // }
+            }
+        }
+
+        else if (!strcmp(opcode, "add")){
+
+            if (isNumber(arg0) && isNumber(arg1) && isNumber(arg2)){
+                    if ((atoi(arg0)>=0 && atoi(arg0)<=7) && (atoi(arg1)>=0 && atoi(arg1)<=7) && (atoi(arg2)>=0 && atoi(arg2)<=7)){
+
+                        assembled = (assembled << 3);
+                        assembled = (assembled | atoi(arg0));
+                        assembled = (assembled << 3);
+                        assembled = (assembled | atoi(arg1));
+                        assembled = (assembled << 16);
+                        assembled = (assembled | atoi(arg2));
+
+                        text_items[text_count] = assembled;
+                        text_count += 1;
+
+                    } else{
+                        printf("error");
+                        exit(1);
+                    }
+                } else {
+                    printf("error");
+                    exit(1);
+                }
+
+        } else if (!strcmp(opcode, "nor")){
+            assembled = (assembled | 1);
+
+            if (isNumber(arg0) && isNumber(arg1) && isNumber(arg2)){
+                    if ((atoi(arg0)>=0 && atoi(arg0)<=7) && (atoi(arg1)>=0 && atoi(arg1)<=7) && (atoi(arg2)>=0 && atoi(arg2)<=7)){
+
+                        assembled = (assembled << 3);
+                        assembled = (assembled | atoi(arg0));
+                        assembled = (assembled << 3);
+                        assembled = (assembled | atoi(arg1));
+                        assembled = (assembled << 16);
+                        assembled = (assembled | atoi(arg2));
+
+                        text_items[text_count] = assembled;
+                        text_count += 1;
+                    } else{
+                        printf("error");
+                        exit(1);
+                    }
+                } else {
+                    printf("error");
+                    exit(1);
+                }
+
+        } else if (!strcmp(opcode, "lw")){
+            assembled = 0b010 << 22;
+
+            unsigned int reg_a = 0;
+
+            if (isNumber(arg0)){
+                reg_a = atoi(arg0) << 19;
+            } else {
+                printf("error");
+                exit(1);
+            }
+
+            if ((reg_a >> 19) < 0 || (reg_a >> 19) > 7){
+                printf("error");
+                exit(1);
+            }
+
+            assembled = assembled | reg_a;
+
+            unsigned int reg_b = 0;
+
+            if (isNumber(arg1)){
+                reg_b = atoi(arg1) << 16;
+            } else {
+                printf("error");
+                exit(1);
+            }
+
+            if ((reg_b >> 16) < 0 || (reg_b >> 16) > 7){
+                printf("error");
+                exit(1);
+            }
+
+            assembled = assembled | reg_b;
+
+            int offset = 0;
+            if (isNumber(arg2)){
+                offset = atoi(arg2);
+            } else {
+                // implement labels
+                bool notvalid = true;
+
+                for (int i = 0; i < total_lines; ++i){
+                    if (strcmp(ls[i].name, arg2) == 0){
+                        offset = ls[i].index;
+                        notvalid = false;
+                        break;
+                    }
+                }
+
+                if (!isupper(arg2[0])){
+                    
+
+                    if (notvalid){
+                        exit(1); 
+                    }
+                    
+
+                } else {
+
+                    bool already_in = false;
+
+                    for (int i = 0; i < symbol_count; ++i){
+                        if (!strcmp(symbol_items[i].name, arg2)){
+                            already_in = true;
+                            break;
+                        }
+                    }
+
+                    if (!already_in){
+
+                        struct Symbol s;
+                        strcpy(s.name, arg2);
+
+                        // check symbol
+                        s.section = 'U';
+
+                        s.offset = 0;
+
+                        symbol_items[symbol_count] = s;
+                        symbol_count += 1;
+                    }
+
+                }
+
+                if (offset < -32768 || offset > 32767) {
+                    exit(1);
+                }
+
+
+
+            
+
+
+                // add to relocation table
+                struct Reloc r;
+                strcpy(r.instruction, "lw");
+                strcpy(r.symbol_name, arg2);
+                r.offset = text_count;
+                reloc_items[reloc_count] = r;
+                reloc_count += 1;
+
+
+            }
+            int mask = 0b00000000000000001111111111111111;
+            offset = offset & mask;
+            assembled = assembled | offset;
+            text_items[text_count] = assembled;
+            text_count += 1;
+
+
+
+        } else if (!strcmp(opcode, "sw")){
+            assembled = 0b011 << 22;
+
+            unsigned int reg_a = 0;
+
+            if (isNumber(arg0)){
+                reg_a = atoi(arg0) << 19;
+            } else {
+                printf("error");
+                exit(1);
+            }
+
+            if ((reg_a >> 19) < 0 || (reg_a >> 19) > 7){
+                printf("error");
+                exit(1);
+            }
+
+            assembled = assembled | reg_a;
+
+            unsigned int reg_b = 0;
+
+            if (isNumber(arg1)){
+                reg_b = atoi(arg1) << 16;
+            } else {
+                printf("error");
+                exit(1);
+            }
+
+            if ((reg_b >> 16) < 0 || (reg_b >> 16) > 7){
+                printf("error");
+                exit(1);
+            }
+
+            assembled = assembled | reg_b;
+
+            int offset = 0;
+            if (isNumber(arg2)){
+                offset = atoi(arg2);
+            } else {
+                // implement labels
+
+                bool notvalid = true;
+
+                for (int i = 0; i < total_lines; ++i){
+                    if (strcmp(ls[i].name, arg2) == 0){
+                        offset = ls[i].index;
+                        notvalid = false;
+                        break;
+                    }
+                }
+
+                if (!isupper(arg2[0])){
+
+
+                    if (notvalid){
+                        exit(1);
+                    }
+
+                } else {
+
+                    bool already_in = false;
+
+                    for (int i = 0; i < symbol_count; ++i){
+                        if (!strcmp(symbol_items[i].name, arg2)){
+                            already_in = true;
+                            break;
+                        }
+                    }
+
+                    if (!already_in){
+
+                        struct Symbol s;
+                        strcpy(s.name, arg2);
+
+                        // check symbol
+                        s.section = 'U';
+
+                        s.offset = 0;
+
+                        symbol_items[symbol_count] = s;
+                        symbol_count += 1;
+                    }
+
+                }
+
+                // add to relocation table
+                struct Reloc r;
+                strcpy(r.instruction, "sw");
+                strcpy(r.symbol_name, arg2);
+                r.offset = text_count;
+                reloc_items[reloc_count] = r;
+                reloc_count += 1;
+
+
+            }
+                if (offset < -32768 || offset > 32767) {
+                    exit(1);
+                }
+
+                int mask = 0b00000000000000001111111111111111;
+                offset = offset & mask;
+                assembled = assembled | offset;
+
+
+                text_items[text_count] = assembled;
+                text_count += 1;
+
+        } else if (!strcmp(opcode, "beq")){ // label should equate to value needed to get back to label -> label index = index + 1 - equate
+            assembled = 0b100 << 22;
+
+            unsigned int reg_a = 0;
+
+            if (isNumber(arg0)){
+                reg_a = atoi(arg0) << 19;
+            } else {
+                printf("error");
+                exit(1); // good
+            }
+
+            if ((reg_a >> 19) < 0 || (reg_a >> 19) > 7){
+                printf("error");
+                exit(1);
+            }
+
+            assembled = assembled | reg_a;
+
+            unsigned int reg_b = 0;
+
+            if (isNumber(arg1)){
+                reg_b = atoi(arg1) << 16;
+            } else {
+                printf("error");
+                exit(1);
+            }
+
+            if ((reg_b >> 16) < 0 || (reg_b >> 16) > 7){
+                printf("error");
+                exit(1);
+            }
+
+            assembled = assembled | reg_b;
+
+            int offset = 0;
+            if (isNumber(arg2)){
+                offset = atoi(arg2);
+            } else {
+
+                // if (!isupper(arg2[0])){
+
+                    bool notvalid = true;
+
+                    for (int i = 0; i < total_lines; ++i){
+                        if (strcmp(ls[i].name, arg2) == 0){
+                            offset = ls[i].index - PC - 1;
+                            notvalid = false;
+                            break;
+                        }
+                    }
+
+                    if (notvalid){
+                        printf("error");
+                        exit(1);
+                    }
+
+                // } else {
+
+                    // bool already_in = false;
+
+                    // for (int i = 0; i < symbol_count; ++i){
+                    //     if (!strcmp(symbol_items[i].name, arg2)){
+                    //         already_in = true;
+                    //         break;
+                    //     }
+                    // }
+
+                    // if (!already_in){
+
+                    //     struct Symbol s;
+                    //     strcpy(s.name, arg2);
+
+                    //     // check symbol
+                    //     s.section = 'U';
+
+                    //     s.offset = 0;
+
+                    //     symbol_items[symbol_count] = s;
+                    //     symbol_count += 1;
+                    // }
+
+                // }
+                // implement labels
+            }
+
+            if (offset < -32768 || offset > 32767) {
+                exit(1);
+            }
+
+            int mask = 0b00000000000000001111111111111111;
+            offset = offset & mask;
+            assembled = assembled | offset;
+
+            text_items[text_count] = assembled;
+            text_count += 1;
+
+            // add to relocation table
+
+
+
+        } else if (!strcmp(opcode, "jalr")){
+            assembled = (assembled | 5);
+
+            if (isNumber(arg0) && isNumber(arg1)){
+                    if ((atoi(arg0)>=0 && atoi(arg0)<=7) && (atoi(arg1)>=0 && atoi(arg1)<=7)){
+
+                    } else{
+                        printf("error");
+                        exit(1);
+                    }
+                } else {
+                    printf("error");
+                    exit(1);
+                }
+
+                assembled = (assembled << 3);
+                assembled = (assembled | atoi(arg0));
+                assembled = (assembled << 3);
+                assembled = (assembled | atoi(arg1));
+                assembled = (assembled << 16);
+                text_items[text_count] = assembled;
+                text_count += 1;
+
+        } else if (!strcmp(opcode, "halt")){
+            assembled = (assembled | 6);
+            assembled = (assembled << 3);
+            assembled = (assembled | atoi(arg0));
+            assembled = (assembled << 19);
+            text_items[text_count] = assembled;
+            text_count += 1;
+        } else if (!strcmp(opcode, "noop")){
+            assembled = (assembled | 7);
+            assembled = (assembled << 3);
+            assembled = (assembled | atoi(arg0));
+            assembled = (assembled << 19);
+            text_items[text_count] = assembled;
+            text_count += 1;
+        }  else {
+            printf("error opcode");
+            exit(1);
+        }
+        PC += 1;
+
+    }
+
+    
+
+    // output goes here
+
+    fprintf(outFilePtr, "%d", text_count);
+    fprintf(outFilePtr, " ");
+    fprintf(outFilePtr,"%d", data_count);
+    fprintf(outFilePtr, " ");
+    fprintf(outFilePtr,"%d", symbol_count);
+    fprintf(outFilePtr, " ");
+    fprintf(outFilePtr,"%d", reloc_count);
+    fprintf(outFilePtr, "\n");
+    for (int i = 0; i < text_count; ++i){
+        fprintf(outFilePtr,"%u",text_items[i]);
+        fprintf(outFilePtr, "\n");
+    }
+    for (int i = 0; i < data_count; ++i){
+        fprintf(outFilePtr, "%d", data_items[i]);
+        fprintf(outFilePtr, "\n");
+    }
+
+        
+        for (int i = 0; i < num_labels; ++i){
+            // loop thru and find where it is in label to get index
+            if (isupper(ls[i].name[0])){
+                int k = 0;
+
+                for (; k < symbol_count; ++k){
+                    if (!strcmp(symbol_items[k].name, ls[i].name)){
+                        break;
+                    }
+                }
+                if (ls[i].index < text_count){
+
+                    symbol_items[k].section = 'T';
+                    symbol_items[k].offset = ls[i].index;
+                } else {
+                    symbol_items[k].section = 'D';
+                    symbol_items[k].offset = ls[i].index - text_count;
+                }
+            }
+        }
+
+
+
+
+    for (int i = 0; i < symbol_count; ++i){
+        fprintf(outFilePtr,"%s", symbol_items[i].name);
+        fprintf(outFilePtr," ");
+        fprintf(outFilePtr,"%c",symbol_items[i].section);
+        fprintf(outFilePtr," ");
+        fprintf(outFilePtr,"%d", symbol_items[i].offset);
+        fprintf(outFilePtr,"\n");
+    }
+    for (int i = 0; i < reloc_count; ++i){
+        fprintf(outFilePtr,"%d", reloc_items[i].offset);
+        fprintf(outFilePtr," ");
+        fprintf(outFilePtr,"%s",reloc_items[i].instruction);
+        fprintf(outFilePtr," ");
+        fprintf(outFilePtr, "%s",reloc_items[i].symbol_name);
+        fprintf(outFilePtr,"\n");
+    }
+
+
+    /* after doing a readAndParse, you may want to do the following to test the
+        opcode */
+    // int test = 4;
+
+    // test = test << 22;
+
+    // test = test | 65533;
+
+
+
+
+    return(0);
+}
+
+
+// Returns non-zero if the line contains only whitespace.
+static int lineIsBlank(char *line) {
+    char whitespace[4] = {'\t', '\n', '\r', ' '};
+    int nonempty_line = 0;
+    for(int line_idx=0; line_idx < strlen(line); ++line_idx) {
+        int line_char_is_whitespace = 0;
+        for(int whitespace_idx = 0; whitespace_idx < 4; ++ whitespace_idx) {
+            if(line[line_idx] == whitespace[whitespace_idx]) {
+                line_char_is_whitespace = 1;
+                break;
+            }
+        }
+        if(!line_char_is_whitespace) {
+            nonempty_line = 1;
+            break;
+        }
+    }
+    return !nonempty_line;
+}
+
+// Exits 2 if file contains an empty line anywhere other than at the end of the file.
+// Note calling this function rewinds inFilePtr.
+static void checkForBlankLinesInCode(FILE *inFilePtr) {
+    char line[MAXLINELENGTH];
+    int blank_line_encountered = 0;
+    int address_of_blank_line = 0;
+    rewind(inFilePtr);
+
+    for(int address = 0; fgets(line, MAXLINELENGTH, inFilePtr) != NULL; ++address) {
+        // Check for line too long
+        if (strlen(line) >= MAXLINELENGTH-1) {
+            printf("error: line too long\n");
+            exit(1);
+        }
+
+        // Check for blank line.
+        if(lineIsBlank(line)) {
+            if(!blank_line_encountered) {
+                blank_line_encountered = 1;
+                address_of_blank_line = address;
+            }
+        } else {
+            if(blank_line_encountered) {
+                printf("Invalid Assembly: Empty line at address %d\n", address_of_blank_line);
+                exit(2);
+            }
+        }
+    }
+    rewind(inFilePtr);
+}
+
+
+/*
+* NOTE: The code defined below is not to be modifed as it is implimented correctly.
+*/
+
+/*
+ * Read and parse a line of the assembly-language file.  Fields are returned
+ * in label, opcode, arg0, arg1, arg2 (these strings must have memory already
+ * allocated to them).
+ *
+ * Return values:
+ *     0 if reached end of file
+ *     1 if all went well
+ *
+ * exit(1) if line is too long.
+ */
+int
+readAndParse(FILE *inFilePtr, char *label, char *opcode, char *arg0,
+    char *arg1, char *arg2)
+{
+    char line[MAXLINELENGTH];
+    char *ptr = line;
+
+    /* delete prior values */
+    label[0] = opcode[0] = arg0[0] = arg1[0] = arg2[0] = '\0';
+
+    /* read the line from the assembly-language file */
+    if (fgets(line, MAXLINELENGTH, inFilePtr) == NULL) {
+	/* reached end of file */
+        return(0);
+    }
+
+    /* check for line too long */
+    if (strlen(line) == MAXLINELENGTH-1) {
+	printf("error: line too long\n");
+	exit(1);
+    }
+
+    // Ignore blank lines at the end of the file.
+    if(lineIsBlank(line)) {
+        return 0;
+    }
+
+    /* is there a label? */
+    ptr = line;
+    if (sscanf(ptr, "%[^\t\n ]", label)) {
+	/* successfully read label; advance pointer over the label */
+        ptr += strlen(label);
+    }
+
+    /*
+     * Parse the rest of the line.  Would be nice to have real regular
+     * expressions, but scanf will suffice.
+     */
+    sscanf(ptr, "%*[\t\n\r ]%[^\t\n\r ]%*[\t\n\r ]%[^\t\n\r ]%*[\t\n\r ]%[^\t\n\r ]%*[\t\n\r ]%[^\t\n\r ]",
+        opcode, arg0, arg1, arg2);
+
+    return(1);
+}
+
+static inline int
+isNumber(char *string)
+{
+    int num;
+    char c;
+    return((sscanf(string, "%d%c",&num, &c)) == 1);
+}
+
+
+// int get_index(char * label, struct Labels * ls){
+//     int k;
+//     int z = 0;
+//     while (strcmp(label, ls[z].name)){
+//         z += 1;
+//     }
+
+//     k = ls[z].index;
+
+//     return k;
+
+// }
+
+// symbol table to do:
+// add any to file at beginning
+// each time it is added in main assembly portion check to see if it is already in it
+// reloc should check if label is defined in the file
