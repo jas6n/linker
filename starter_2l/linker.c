@@ -200,7 +200,7 @@ int main(int argc, char *argv[])
 				printf("%s", "no duplicates");
 				exit(1);
 			} 
-			if (count2 < 1){
+			if (count2 < 1 && strcmp(files[i].symbolTable[j].label, "Stack")){
 				printf("%s", "define labels");
 				exit(1);
 			} 
@@ -228,6 +228,24 @@ int main(int argc, char *argv[])
 		files[i].dataStartingLine = line;
 		line += files[i].dataSize;
 	}
+
+	// CombinedFiles c1;
+
+	// c1.textSize = 0;
+	// c1.dataSize = 0;
+	// c1.relocationTableSize = 0;
+	// c1.symbolTableSize = 0;
+
+	// 	for (unsigned int i = 0; i < argc - 2; ++i){
+
+		
+	// 		c1.textSize += files[i].textSize;
+	// 		c1.dataSize += files[i].dataSize;
+	// 		c1.relocationTableSize += files[i].relocationTableSize;
+	// 		c1.symbolTableSize += files[i].symbolTableSize;
+
+
+	// }
 
 
 	// loop through and edit stuff in relocation table
@@ -265,11 +283,15 @@ int main(int argc, char *argv[])
 					}			
 				} else if (!strcmp(files[i].relocTable[j].label, "Stack")){
 
+					// stack should be text + data, add this every time it is called
+					files[i].text[offset] += line;
+
 				} else {
 
 					char section = '\0';
 					unsigned int val = 0;
 					unsigned int f = 0;
+					unsigned int mask = 0b1111111110000000000000000;
 
 
 					// loop thru symbol table to find section and val
@@ -298,7 +320,7 @@ int main(int argc, char *argv[])
 					}
 
 					// update the machine code
-					files[i].text[offset] += off;
+					files[i].text[offset] = (files[i].text[offset] & mask) + off;
 
 				}
 			}
@@ -307,7 +329,7 @@ int main(int argc, char *argv[])
 			// if it is .fill and local
 			// .fill would be similar 
 			else if (!strcmp(files[i].relocTable[j].inst, ".fill")){
-				if (!isupper(files[i].relocTable[j].inst[0])){
+				if (!isupper(files[i].relocTable[j].label[0])){
 
 					
 					bool in_text = true;
@@ -327,11 +349,14 @@ int main(int argc, char *argv[])
 					
 				} else if (!strcmp(files[i].relocTable[j].label, "Stack")){
 
+					files[i].data[offset] += line;
+
 				} else {
 
 					char section = '\0';
 					unsigned int val = 0;
 					unsigned int f = 0;
+					unsigned int mask = 0b1111111110000000000000000;
 
 
 					// loop thru symbol table to find section and val
@@ -360,7 +385,7 @@ int main(int argc, char *argv[])
 					}
 
 					// update the machine code
-					files[i].data[offset] += off;
+					files[i].data[offset] = (files[i].data[offset] & mask) + off;
 
 
 				}

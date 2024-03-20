@@ -9,7 +9,7 @@
             "request": "launch",
             "name": "Debug",
             "program": "${workspaceFolder}/linker.exe",
-            "args": ["main.obj", "subone.obj", "count5.mc"],
+            "args": ["beq_0.obj", "beq_1.obj", "beq.out"],
             "cwd": "${workspaceFolder}"
         }
     ]
