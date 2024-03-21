@@ -332,7 +332,7 @@ int main(int argc, char *argv[])
 				if (!isupper(files[i].relocTable[j].label[0])){
 
 					
-					bool in_text = true;
+					bool in_text = true; // 
 
 					unsigned int ind_orig_in_data = files[i].relocTable[j].offset;
 
@@ -342,9 +342,12 @@ int main(int argc, char *argv[])
 
 
 					if (in_text){				
-						files[i].data[ind_orig_in_data] += files[i].textStartingLine;	
+						files[i].data[ind_orig_in_data] += files[i].textStartingLine;	 // when label is in text
 					} else {
-						files[i].data[ind_orig_in_data] += files[i].dataStartingLine;
+						int temp = files[i].data[ind_orig_in_data] - files[i].textSize;
+
+
+						files[i].data[ind_orig_in_data] = temp + files[i].dataStartingLine; // when label is in data
 					}		
 					
 				} else if (!strcmp(files[i].relocTable[j].label, "Stack")){

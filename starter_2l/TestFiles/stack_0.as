@@ -3,4 +3,6 @@
         jalr       4        7
         halt
 input   .fill      10
+        .fill       Stack
+        .fill Stack
 

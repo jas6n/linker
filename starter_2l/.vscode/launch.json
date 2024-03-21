@@ -9,7 +9,7 @@
             "request": "launch",
             "name": "Debug",
             "program": "${workspaceFolder}/linker.exe",
-            "args": ["beq_0.obj", "beq_1.obj", "beq.out"],
+            "args": ["local_0.obj", "local_1.obj", "local.out"],
             "cwd": "${workspaceFolder}"
         }
     ]
